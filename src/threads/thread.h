@@ -14,6 +14,8 @@ enum thread_status
     THREAD_DYING        /* About to be destroyed. */
   };
 
+static struct list block_list = LIST_INITIALIZER(block_list);
+
 /* Thread identifier type.
    You can redefine this to whatever type you like. */
 typedef int tid_t;
@@ -97,6 +99,9 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif
+
+    int ticks_to_wakeup;
+    struct list_elem elem2;              /* block_list element. */
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

@@ -7,7 +7,6 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
-  
 /* See [8254] for hardware details of the 8254 timer chip. */
 
 #if TIMER_FREQ < 19
@@ -89,11 +88,14 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
-
-  ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+	if(ticks>0){
+	  struct thread *cur = thread_current();
+	  cur->ticks_to_wakeup = ticks;
+	  intr_disable();	// to pass the thread_block assertion
+	  list_push_back (&block_list, &cur->elem2);
+	  thread_block();
+	  intr_enable(); 	// from the comment must be enabled
+	}
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -172,6 +174,23 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  
+  
+  enum intr_level old_level = intr_disable();
+  
+  struct list_elem *e = list_begin(&block_list);
+  while(e != list_end(&block_list)){
+    struct thread *t = list_entry (e, struct thread, elem2);
+    t->ticks_to_wakeup--;
+    if(t->ticks_to_wakeup == 0){
+    	e = list_remove(&t->elem2);
+		thread_unblock(t);
+    }
+    else
+    	e = list_next(e);
+   }
+   
+   intr_set_level(old_level);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
