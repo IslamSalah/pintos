@@ -92,7 +92,7 @@ timer_sleep (int64_t ticks)
 	  struct thread *cur = thread_current();
 	  cur->ticks_to_wakeup = ticks;
 	  intr_disable();	// to pass the thread_block assertion
-	  list_push_back (&block_list, &cur->elem2);
+	  list_push_back (&block_list, &cur->elem);
 	  thread_block();
 	  intr_enable(); 	// from the comment must be enabled
 	}
@@ -180,10 +180,10 @@ timer_interrupt (struct intr_frame *args UNUSED)
   
   struct list_elem *e = list_begin(&block_list);
   while(e != list_end(&block_list)){
-    struct thread *t = list_entry (e, struct thread, elem2);
+    struct thread *t = list_entry (e, struct thread, elem);
     t->ticks_to_wakeup--;
     if(t->ticks_to_wakeup == 0){
-    	e = list_remove(&t->elem2);
+    	e = list_remove(&t->elem);
 		thread_unblock(t);
     }
     else

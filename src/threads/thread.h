@@ -101,7 +101,6 @@ struct thread
 #endif
 
     int ticks_to_wakeup;
-    struct list_elem elem2;              /* block_list element. */
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
