@@ -176,7 +176,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
   thread_tick ();
   
   
-  enum intr_level old_level = intr_disable();
+  enum intr_level old_level = intr_disable();	// before accessing global shared memory block_list
   
   struct list_elem *e = list_begin(&block_list);
   while(e != list_end(&block_list)){
