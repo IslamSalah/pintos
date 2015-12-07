@@ -116,6 +116,11 @@ sema_up (struct semaphore *sema)
   if (!list_empty (&sema->waiters)) 
     thread_unblock (list_entry (list_pop_front (&sema->waiters),
                                 struct thread, elem));
+  //~ if (!list_empty (&sema->waiters)) {
+	//~ struct list_elem *e = list_max (&sema->waiters, &priority_compare_func, 0);
+	//~ list_remove (e);
+    //~ thread_unblock (list_entry (e, struct thread, elem));
+  //~ }
   sema->value++;
   intr_set_level (old_level);
 }
@@ -319,6 +324,14 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   if (!list_empty (&cond->waiters)) 
     sema_up (&list_entry (list_pop_front (&cond->waiters),
                           struct semaphore_elem, elem)->semaphore);
+                          
+  //~ if (!list_empty (&cond->waiters)) {
+	//~ struct list_elem *e = list_max (&cond->waiters, &priority_compare_func, 0);
+	//~ list_remove (e);
+    //~ 
+    //~ sema_up (&list_entry (e, struct semaphore_elem, elem)->semaphore);
+  //~ }          
+  
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by
