@@ -113,15 +113,15 @@ sema_up (struct semaphore *sema)
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();
-  if (!list_empty (&sema->waiters)) 
-    thread_unblock (list_entry (list_pop_front (&sema->waiters),
-                                struct thread, elem));
-  //~ if (!list_empty (&sema->waiters)) {
-	//~ struct list_elem *e = list_max (&sema->waiters, &priority_compare_func, 0);
-	//~ list_remove (e);
-    //~ thread_unblock (list_entry (e, struct thread, elem));
-  //~ }
+  if (!list_empty (&sema->waiters)) {
+	struct list_elem *e = list_max (&sema->waiters, &priority_compare_func, 0);
+	list_remove (e);
+	sema->value++;				//this allows the the first semup to work correctly 
+    thread_unblock (list_entry (e, struct thread, elem));
+  }
+  else
   sema->value++;
+  
   intr_set_level (old_level);
 }
 
