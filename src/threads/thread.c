@@ -70,7 +70,7 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
-bool priority_compare_func(const struct list_elem *a,
+bool compare_func(const struct list_elem *a,
                           const struct list_elem *b,
                           void *aux);
 
@@ -489,7 +489,6 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   list_init(&t->donating_locks);
   list_push_back (&all_list, &t->allelem);
-  t->ticks_to_wakeup = 0;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -516,7 +515,7 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else{
-	struct list_elem *e = list_max (&ready_list, &priority_compare_func, 0);
+	struct list_elem *e = list_max (&ready_list, &compare_func, 0);
 	list_remove (e);
 	return list_entry (e, struct thread, elem);
   }
@@ -609,12 +608,17 @@ allocate_tid (void)
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
-//additions////////////////
-bool priority_compare_func(const struct list_elem *a,
+/*
+ * if aux=1 the method compare threads according to their wakeup_time
+ * else the comparison is based on thread_priority
+ * */
+bool compare_func(const struct list_elem *a,
                           const struct list_elem *b,
                           void *aux){
 	struct thread *A = list_entry (a, struct thread, elem);
 	struct thread *B = list_entry (b, struct thread, elem);
+	if(aux) // for comparing wakeup_time
+		return A->wakeup_time < B->wakeup_time;
 	return A->priority < B->priority;
 	
 }

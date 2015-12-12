@@ -86,13 +86,13 @@ timer_elapsed (int64_t then)
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
 void
-timer_sleep (int64_t ticks) 
+timer_sleep (int64_t delta_ticks) 
 {
-	if(ticks>0){
+	if(delta_ticks>0){
 	  struct thread *cur = thread_current();
-	  cur->ticks_to_wakeup = ticks;
-	  intr_disable();	// to pass the thread_block assertion
-	  list_push_back (&block_list, &cur->elem);
+	  intr_disable();	// to access global memory & pass the thread_block assertion
+	  cur->wakeup_time = ticks + delta_ticks;
+	  list_insert_ordered(&block_list, &cur->elem, compare_func, 1);
 	  thread_block();
 	  intr_enable(); 	// from the comment must be enabled
 	}
@@ -177,17 +177,14 @@ timer_interrupt (struct intr_frame *args UNUSED)
   
   
   enum intr_level old_level = intr_disable();	// before accessing global shared memory block_list
-  
+
   struct list_elem *e = list_begin(&block_list);
   while(e != list_end(&block_list)){
     struct thread *t = list_entry (e, struct thread, elem);
-    t->ticks_to_wakeup--;
-    if(t->ticks_to_wakeup == 0){
-    	e = list_remove(&t->elem);
-		thread_unblock(t);
-    }
-    else
-    	e = list_next(e);
+    if(t->wakeup_time > ticks)
+		break;
+	e = list_remove(&t->elem);
+	thread_unblock(t);
    }
    
    intr_set_level(old_level);

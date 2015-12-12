@@ -102,7 +102,7 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
 #endif
 
-    int ticks_to_wakeup;
+    int wakeup_time;
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
@@ -145,7 +145,7 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 //additions////////////////
-bool priority_compare_func(const struct list_elem *a,
+bool compare_func(const struct list_elem *a,
                           const struct list_elem *b,
                           void *aux);
 ///////////////////////////

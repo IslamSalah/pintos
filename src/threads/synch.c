@@ -114,7 +114,7 @@ sema_up (struct semaphore *sema)
 
   old_level = intr_disable ();
   if (!list_empty (&sema->waiters)) {
-		struct list_elem *e = list_max (&sema->waiters, &priority_compare_func, 0);
+		struct list_elem *e = list_max (&sema->waiters, &compare_func, 0);
 		list_remove (e);
 		sema->value++;				//this allows the the first semup to work correctly 
     thread_unblock (list_entry (e, struct thread, elem));
@@ -312,10 +312,10 @@ lock_release (struct lock *lock)
   
   struct list_elem *e_2nd_mx;
   if(!list_empty(&lock->semaphore.waiters)){
-		e= list_max(&lock->semaphore.waiters, &priority_compare_func, 0);
+		e= list_max(&lock->semaphore.waiters, &compare_func, 0);
 		list_remove(e);
 		if(!list_empty(&lock->semaphore.waiters)){
-			e_2nd_mx= list_max(&lock->semaphore.waiters, &priority_compare_func, 0);
+			e_2nd_mx= list_max(&lock->semaphore.waiters, &compare_func, 0);
 			lock->mx_priority= list_entry(e_2nd_mx, struct thread, elem)->priority;
 		}
 		else lock->mx_priority= -1;
@@ -394,7 +394,15 @@ cond_wait (struct condition *cond, struct lock *lock)
   lock_acquire (lock);
 }
 
-bool priority_compare_func2(const struct list_elem *a,
+/*
+ * used to do comparison on threads which is deep inside:
+ * 1) cond->waiters is a list of semaphore_elem
+ * 2)semaphore_elem contains semaphore
+ * 3)semaphore contains waiters list
+ * 4)waiters list contains only one thread (which is to be signaled by
+ * condVar)
+ * */
+bool compare_func2(const struct list_elem *a,
                           const struct list_elem *b,
                           void *aux){
 	struct semaphore_elem *A = list_entry (a, struct semaphore_elem, elem);
@@ -421,7 +429,7 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (lock_held_by_current_thread (lock));
                           
   if (!list_empty (&cond->waiters)) {
-		struct list_elem *e = list_max (&cond->waiters, &priority_compare_func2, 0);
+		struct list_elem *e = list_max (&cond->waiters, &compare_func2, 0);
 		list_remove (e);
     
     sema_up (&list_entry (e, struct semaphore_elem, elem)->semaphore);
