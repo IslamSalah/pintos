@@ -90,8 +90,10 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
+    int initial_priority;										/*Initial_priority*/
+    struct list donating_locks;					/* All the locks held by the current thread. */
     struct list_elem allelem;           /* List element for all threads list. */
-
+		struct lock *blocked;							/* Lock BLOCKED at.*/
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
