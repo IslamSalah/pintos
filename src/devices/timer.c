@@ -7,8 +7,8 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
-/* See [8254] for hardware details of the 8254 timer chip. */
 
+/* See [8254] for hardware details of the 8254 timer chip. */
 #if TIMER_FREQ < 19
 #error 8254 timer requires TIMER_FREQ >= 19
 #endif
@@ -18,7 +18,6 @@
 
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
-
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
@@ -36,6 +35,7 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+  load_avg= 0;
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -176,18 +176,21 @@ timer_interrupt (struct intr_frame *args UNUSED)
   thread_tick ();
   
   
-  enum intr_level old_level = intr_disable();	// before accessing global shared memory block_list
+  //enum intr_level old_level = intr_disable();	// before accessing global shared memory block_list
 
   struct list_elem *e = list_begin(&block_list);
   while(e != list_end(&block_list)){
     struct thread *t = list_entry (e, struct thread, elem);
     if(t->wakeup_time > ticks)
-		break;
-	e = list_remove(&t->elem);
-	thread_unblock(t);
-   }
-   
-   intr_set_level(old_level);
+			break;
+		enum intr_level old_level = intr_disable();	// before accessing global shared memory block_list
+		e = list_remove(&t->elem);
+		thread_unblock(t);
+		intr_set_level(old_level);
+  }
+  
+		
+	//intr_set_level(old_level);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
