@@ -20,6 +20,7 @@
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+int parseCmd(const char* cmd, char** parts);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -195,7 +196,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp);
+static bool setup_stack (void **esp, char **argv, int argc);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -221,11 +222,21 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
+////
+  char *cmdparts[512+5];
+  int argc = parseCmd(file_name, cmdparts);
+  
+  //~ int idx=0;
+  //~ while(cmdparts[idx]!=NULL)
+	//~ printf("^^^^%s\n", cmdparts[idx++]);
+////
+
+
   /* Open executable file. */
-  file = filesys_open (file_name);
+  file = filesys_open (cmdparts[0]);
   if (file == NULL) 
     {
-      printf ("load: %s: open failed\n", file_name);
+      printf ("load: %s: open failed\n", cmdparts[0]);
       goto done; 
     }
 
@@ -238,7 +249,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       || ehdr.e_phentsize != sizeof (struct Elf32_Phdr)
       || ehdr.e_phnum > 1024) 
     {
-      printf ("load: %s: error loading executable\n", file_name);
+      printf ("load: %s: error loading executable\n", cmdparts[0]);
       goto done; 
     }
 
@@ -302,7 +313,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp))
+  if (!setup_stack (esp, cmdparts, argc))
     goto done;
 
   /* Start address. */
@@ -427,18 +438,44 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp) 
-{
+setup_stack (void **esp, char **argv, int argc) 
+{	
   uint8_t *kpage;
   bool success = false;
-
+  	
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      if (success)
+      if (success){
+        //~ *esp = PHYS_BASE -12;
+        //int *p = (int *)(esp);
+        //printf("$######################%d\n", *(p));
         *esp = PHYS_BASE;
-      else
+         int i = argc;
+        // this array holds reference to differences arguments in the stack
+        uint32_t * arr[argc];
+        while(--i >= 0)
+        {
+          *esp = *esp - (strlen(argv[i])+1)*sizeof(char);
+          arr[i] = (uint32_t *)*esp;
+          memcpy(*esp,argv[i],strlen(argv[i])+1);
+        }
+        *esp = *esp - 4;
+        (*(int *)(*esp)) = 0;//sentinel
+        i = argc;
+        while( --i >= 0)
+        {
+          *esp = *esp - 4;//32bit
+          (*(uint32_t **)(*esp)) = arr[i];
+        }
+        *esp = *esp - 4;
+        (*(uintptr_t  **)(*esp)) = (*esp+4);
+        *esp = *esp - 4;
+        *(int *)(*esp) = argc;
+        *esp = *esp - 4;
+        (*(int *)(*esp))=0;
+      }else
         palloc_free_page (kpage);
     }
   return success;
@@ -462,4 +499,16 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
+
+int
+parseCmd(const char* cmd, char** cmdparts){
+	int size = 0;
+	char *temp = malloc(512+5);
+	strlcpy(temp, cmd, 5000);
+	char *token, *save_ptr;
+	for (token = strtok_r (temp, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr))
+       cmdparts[size++] = token;
+	cmdparts[size] = NULL;
+	return size;
 }
