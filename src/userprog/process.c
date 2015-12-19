@@ -448,11 +448,8 @@ setup_stack (void **esp, char **argv, int argc)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success){
-        //~ *esp = PHYS_BASE -12;
-        //int *p = (int *)(esp);
-        //printf("$######################%d\n", *(p));
         *esp = PHYS_BASE;
-         int i = argc;
+        int i = argc;
         // this array holds reference to differences arguments in the stack
         uint32_t * arr[argc];
         while(--i >= 0)
@@ -475,6 +472,7 @@ setup_stack (void **esp, char **argv, int argc)
         *(int *)(*esp) = argc;
         *esp = *esp - 4;
         (*(int *)(*esp))=0;
+         hex_dump(0, *esp, (int) ((size_t) PHYS_BASE - (size_t) *esp), true);
       }else
         palloc_free_page (kpage);
     }
